@@ -1,26 +1,188 @@
 import React from 'react';
-import logo from './logo.svg';
+import Modal from './components/Modal';
+import axios from 'axios';
 import './App.css';
 
-function App() {
-  return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
-  );
+const todoItems = [
+  {
+    id: 1,
+    title: "Read Books",
+    description: "Read Django Book",
+    done: false
+  },
+  {
+    id: 2,
+    title: "Learn Redux",
+    description: "Learn complete Redux",
+    done: false
+  },
+  {
+    id: 3,
+    title: "Learn React",
+    description: "Learn React JS",
+    done: true
+  }
+];
+
+class App extends React.Component {
+  constructor(props){
+    super(props);
+    this.state = {
+      modal: false,
+      viewDone: false,
+      activeItem: {
+        title: "",
+        description: "",
+        done: false
+      },
+      todoList: todoItems
+    };
+  }
+
+  componentDidMount() {
+    this.refreshList();
+  }
+
+  refreshList = () => {
+    axios
+      .get("http://localhost:8000/api/todos/")
+      .then(res => {
+        this.setState({ todoList: res.data });
+      })
+      .catch(error => console.log("Error:" + error));
+  };
+
+  toggle = () => {
+    this.setState({
+      modal: !this.state.modal
+    });
+  };
+
+  handleSubmit = item => {
+    this.toggle();
+    if(item.id) {
+      axios
+        .put(`http://localhost:8000/api/todos/${item.id}/`, item)
+        .then(res => {
+          this.refreshList()
+        });
+      return;
+    }
+
+    axios
+      .post("http://localhost:8000/api/todos/", item)
+      .item(res => {
+        this.refreshList()
+      });
+    // alert("Save" + JSON.stringify(item));
+  };
+
+  handleDelete = item => {
+    axios
+      .delete(`http://localhost:8000/api/todos/${item.id}`)
+      .then(res => {
+        this.refreshList()
+      });
+    // alert("Delete" + JSON.stringify(item));
+  };
+
+  createItem = () => {
+    const item = {
+      title: "",
+      description: "",
+      done: false
+    };
+    this.setState({
+      activeItem: item,
+      modal: !this.state.modal
+    });
+  };
+
+  editItem = (item) => {
+    this.setState({
+      activeItem: item,
+      modal: !this.state.modal
+    });
+  };
+
+  displayDone = status => {
+    if(status) {
+      return this.setState({
+        viewDone: true
+      });
+    }
+    return this.setState({
+      viewDone: false
+    });
+  }
+
+  renderTabList = () => {
+    return(
+      <div className="my-5 tab-list">
+        <span onClick={
+          () => this.displayDone(true)
+        } className={this.state.viewDone ? "active" : ""}>
+          Done
+        </span>
+        <span onClick={
+          () => this.displayDone(false)
+        } className={this.state.viewDone ? "" : "active"}>
+          Not Done
+        </span>
+      </div>
+    )
+  }
+
+  renderItems = () => {
+    const { viewDone } = this.state;
+    const newItems = this.state.todoList.filter(
+      item => item.done === viewDone
+    );
+
+    return newItems.map(item => (
+      <li className="list-group-item d-flex justify-content-between align-items-center"
+        key={item.id}>
+        <span className={`todo-title mr-2 ${
+          this.state.viewDone ? "done-todo" : ""
+        }`} title={item.description}>{item.title}</span>
+        <span>
+          <button className="btn btn-secondary mr-2">Edit</button>
+          <button className="btn btn-danger">Delete</button>
+        </span>
+      </li>
+    ));
+  };
+
+  render(){
+    return (
+      <main className="content">
+        <h1 className="text-white text-uppercase text-center my-4">Todo App</h1>
+        <div className="row">
+          <div className="col-md-6 col-sm-10 mx-auto p-0">
+            <div className="card p-3">
+              <div className="">
+                <button className="btn btn-primary">Add Todo</button>
+              </div>
+              { this.renderTabList() }
+              <ul className="list-group list-group-flush">
+                { this.renderItems() }
+              </ul>
+            </div>
+          </div>
+        </div>
+        {
+          this.state.modal ? (
+            <Modal
+              activeItem={ this.state.activeItem }
+              toggle={ this.toggle }
+              onSave={ this.handleSubmit }
+            />
+          )
+          : null
+        }
+      </main>
+    );
+  }
 }
 
 export default App;
